@@ -16,6 +16,7 @@ See 'docker-run.sh' for how to provide parameters to this script.
 import os
 import json
 
+
 def makeVarsJs(path, books, booknames, base_url):
     links = []
 
@@ -27,17 +28,18 @@ def makeVarsJs(path, books, booknames, base_url):
 
     print("Writing: " + path)
     with open(path, "w") as file:
-        file.write("var HEADER_LINKS=%s;\n" % json.dumps(links, separators=(',', ':')))
+        file.write("var HEADER_LINKS=%s;\n" % json.dumps(links, separators=(",", ":")))
+
 
 # Starting from docker, get config from env. variables:
-base_url = os.environ.get('BASE_URL', '/')
+base_url = os.environ.get("BASE_URL", "/")
 web_path = "./web"
 host_port = ":5000"
 notes_root = "/notes"
-books = os.environ.get('NOTEBOOKS', '')
-booknames = os.environ.get('NOTEBOOK_NAMES', '')
+books = os.environ.get("NOTEBOOKS", "")
+booknames = os.environ.get("NOTEBOOK_NAMES", "")
 try:
-    playground = int(os.environ.get('PLAYGROUND', '0'))
+    playground = int(os.environ.get("PLAYGROUND", "0"))
 except:
     playground = 0
 
@@ -45,18 +47,20 @@ except:
 makeVarsJs(web_path + "/vars.js", books, booknames, base_url)
 
 # Change user:group if specified
-if 'GID' in os.environ:
-    print("Setting GID: " + os.environ['GID'])
-    os.setgid(int(os.environ['GID']))
+if "GID" in os.environ:
+    print("Setting GID: " + os.environ["GID"])
+    os.setgid(int(os.environ["GID"]))
 
-if 'UID' in os.environ:
-    print("Setting UID: " + os.environ['UID'])
-    os.setuid(int(os.environ['UID']))
+if "UID" in os.environ:
+    print("Setting UID: " + os.environ["UID"])
+    os.setuid(int(os.environ["UID"]))
 
 import notesntodos.server
 
+
 def startServer():
     notesntodos.server.start(web_path, host_port, notes_root, base_url, books)
+
 
 if playground > 0:
     print("*** Starting in playground mode: %d minutes reset ***" % playground)
@@ -66,6 +70,7 @@ if playground > 0:
         book_folders.append(path)
 
     from playground import runPlayground
+
     # 30 minutes clean up time
     runPlayground(book_folders, startServer, playground)
 else:

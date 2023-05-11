@@ -27,13 +27,15 @@ from bottle import Bottle, request, response, redirect, static_file
 from .notes import Note, NoteCollection
 from .dirwatcher import DirWatcher
 
+
 def serveRootRedirect(app, base_prefix, redirect_to):
     # base_prefix must be "/" or "/base/"
     @app.route(base_prefix)
     @app.route(base_prefix[:-1])
     def redirectTo():
         redirect(redirect_to)
-    
+
+
 def serveNoteCollection(app, prefix, frontend_path, note_col, note_col_lock):
     # prefix must be "/" or "/notebook/" or "/base/notebook/"
     if prefix != "/":
@@ -46,7 +48,7 @@ def serveNoteCollection(app, prefix, frontend_path, note_col, note_col_lock):
     def getIndex():
         return static_file("index.html", root=frontend_path)
 
-    @app.route(prefix + '<filename>')
+    @app.route(prefix + "<filename>")
     def getFile(filename):
         return static_file(filename, root=frontend_path)
 
@@ -54,7 +56,7 @@ def serveNoteCollection(app, prefix, frontend_path, note_col, note_col_lock):
     def getNotes():
         with note_col_lock:
             tags = note_col.getAllTags()
-        return {"tags" : tags}
+        return {"tags": tags}
 
     @app.get(prefix + "api/getnotes")
     def getNotes():
@@ -62,25 +64,25 @@ def serveNoteCollection(app, prefix, frontend_path, note_col, note_col_lock):
             tagsSet = set(request.query.tags.split(","))
         else:
             tagsSet = None
-        src = request.query.src == '1'
-        html = request.query.html == '1'
-        todos = request.query.todos == '1'
+        src = request.query.src == "1"
+        html = request.query.html == "1"
+        todos = request.query.todos == "1"
         notes_list = []
         with note_col_lock:
             notes = note_col.getNotes(tagsSet)
             for note in notes:
                 notes_list.append(note.getNoteObj(src=src, html=html, todos=todos))
-        return {"notes" : notes_list}
+        return {"notes": notes_list}
 
     @app.get(prefix + "api/getnote")
     def getNote():
-        src = request.query.src == '1'
-        html = request.query.html == '1'
-        todos = request.query.todos == '1'
+        src = request.query.src == "1"
+        html = request.query.html == "1"
+        todos = request.query.todos == "1"
         with note_col_lock:
             note = note_col.findFromFullname(request.query.fullname)
             if note:
-                ret = {"note" : note.getNoteObj(src=src, html=html, todos=todos)}
+                ret = {"note": note.getNoteObj(src=src, html=html, todos=todos)}
             else:
                 ret = None
         if ret:
@@ -99,13 +101,13 @@ def serveNoteCollection(app, prefix, frontend_path, note_col, note_col_lock):
                 note = Note.Parse(n.get("src"))
                 replace = n.get("replace")
                 add_list.append((note, replace))
-            
+
             with note_col_lock:
                 for note, replace in add_list:
                     note_col.addNote(note, replace)
 
-            return {"status":"ok"}
-            
+            return {"status": "ok"}
+
         except Exception as e:
             response.status = 400
             return str(e)
@@ -119,10 +121,11 @@ def serveNoteCollection(app, prefix, frontend_path, note_col, note_col_lock):
             n = Note.Parse(note.get("src"))
             if n is None:
                 raise ValueError("Note is empty. Saving an empty note will delete it.")
-            return {"status":"ok", "note" : n.getNoteObj(html=True,todos=True)}
+            return {"status": "ok", "note": n.getNoteObj(html=True, todos=True)}
         except Exception as e:
             response.status = 400
             return str(e)
+
 
 def setupDirWatcher(notes_path, note_col, note_col_lock):
     # Setup a dir watcher to reload note collection when files in notes_path change
@@ -132,7 +135,7 @@ def setupDirWatcher(notes_path, note_col, note_col_lock):
         with note_col_lock:
             notes = note_col.loadAll()
         print("Notes dir: %s changed, reloaded: %d notes" % (notes_path, notes))
-        
+
     dw = DirWatcher(notes_path[:-1], 3, dirChanged)
 
     # Ignore changes to files the note collection is about to change itself
@@ -143,15 +146,18 @@ def setupDirWatcher(notes_path, note_col, note_col_lock):
 
     return dw
 
+
 # --- Custom Gunicorn app ---
 
 import gunicorn.app.base
 
+
 class CustomUnicornApp(gunicorn.app.base.BaseApplication):
-    """ 
+    """
     This gunicorn app class provides create and exit callbacks for worker exit
     and creation, and runs gunicorn with a single worker and multiple gthreads
     """
+
     def __init__(self, create_app_callback, exit_app_callback, host_port):
         self._configBind = host_port
         self._createAppCallback = create_app_callback
@@ -160,7 +166,7 @@ class CustomUnicornApp(gunicorn.app.base.BaseApplication):
 
     @staticmethod
     def exitWorker(arbiter, worker):
-        # worker.app provides us with a reference to "self", and we can call the 
+        # worker.app provides us with a reference to "self", and we can call the
         # exit callback with the object created by the createAppCallback:
         self = worker.app
         self._exitAppCallback(self._createdApp)
@@ -172,20 +178,23 @@ class CustomUnicornApp(gunicorn.app.base.BaseApplication):
         self.cfg.set("threads", 4)
         self.cfg.set("worker_exit", CustomUnicornApp.exitWorker)
         # self.cfg.set("max_requests", 30) # Try this to test correct reloading of workers
-        
+
     def load(self):
         # This function is invoked when a worker is booted
         self._createdApp = self._createAppCallback()
         return self._createdApp
 
+
 # ---
+
 
 def ensureNoSlash(s):
     if s.endswith("/"):
         raise ValueError("Path: '%s' must not end with /" % s)
     return s
 
-def start(frontend_path, host_port, notes_root, base_prefix = "/", books = ""):
+
+def start(frontend_path, host_port, notes_root, base_prefix="/", books=""):
     """Start the notes'n'todos server, hosting both frontend and API
 
     frontend_path   Specifies path of frontend files
@@ -194,7 +203,7 @@ def start(frontend_path, host_port, notes_root, base_prefix = "/", books = ""):
     base_prefix     URL base prefix
     books           Comma seperated names of notebooks or "" if serving only one notebook
 
-    If serving multiple notebooks, multiple note collections are started where the 
+    If serving multiple notebooks, multiple note collections are started where the
     notebook name is added to the notes_root file path and to the URL
     """
 
@@ -216,15 +225,20 @@ def start(frontend_path, host_port, notes_root, base_prefix = "/", books = ""):
                 serveRootRedirect(bottle_app, base_prefix, full_prefix)
                 first = False
 
-            notes_path = notes_root + "/" if prefix == "" else notes_root + "/" + prefix + "/"
-            print("Starting note collection in path: %s with URL prefix: %s" % (notes_path, full_prefix))
+            notes_path = (
+                notes_root + "/" if prefix == "" else notes_root + "/" + prefix + "/"
+            )
+            print(
+                "Starting note collection in path: %s with URL prefix: %s"
+                % (notes_path, full_prefix)
+            )
             note_col = NoteCollection(notes_path)
             print("Loaded: %d notes" % note_col.loadAll())
             lock = threading.Lock()
             dw = setupDirWatcher(notes_path, note_col, lock)
             bottle_app.dirWatchers.append(dw)
             serveNoteCollection(bottle_app, full_prefix, frontend_path, note_col, lock)
-            
+
         return bottle_app
 
     def exitApp(bottle_app):
@@ -237,7 +251,6 @@ def start(frontend_path, host_port, notes_root, base_prefix = "/", books = ""):
     CustomUnicornApp(createApp, exitApp, host_port).run()
 
 
-
 def _testCustomUnicornApp():
     import time
     import multiprocessing
@@ -248,20 +261,20 @@ def _testCustomUnicornApp():
 
         def create():
             global context
-            context['create_called'] = True
+            context["create_called"] = True
             my_app = Bottle()
             my_app.specialValue = 123
             return my_app
 
         def exit(my_app):
             global context
-            assert(my_app.specialValue == 123)
-            context['exit_called'] = True
+            assert my_app.specialValue == 123
+            context["exit_called"] = True
 
         CustomUnicornApp(create, exit, ":8765").run()
-        
-        assert(context['create_called'])
-        assert(context['exit_called'])
+
+        assert context["create_called"]
+        assert context["exit_called"]
 
     process = multiprocessing.Process(target=testProcess)
     process.start()
@@ -271,11 +284,11 @@ def _testCustomUnicornApp():
     process.terminate()
     process.join()
 
-    # Assert errors in the sub process will not abort parent process, 
+    # Assert errors in the sub process will not abort parent process,
     # user must check output to make sure test passed
-    
+
     print("Test passed if gunicorn started and shut down without errors")
-    
-    
+
+
 def testsRun():
     _testCustomUnicornApp()

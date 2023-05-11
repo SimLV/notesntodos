@@ -37,18 +37,24 @@ from markdown import Extension
 from markdown.treeprocessors import Treeprocessor
 import re
 
-RE_CHECKBOX = re.compile(r"^(?P<checkbox> *\[(?P<state>(?:x|X| ){1})\] +)(?P<line>.*)", re.DOTALL)
+RE_CHECKBOX = re.compile(
+    r"^(?P<checkbox> *\[(?P<state>(?:x|X| ){1})\] +)(?P<line>.*)", re.DOTALL
+)
+
 
 def get_checkbox(state, index, onchange_code):
     """Get checkbox tag."""
-    onchange = (' onchange="%s"' % (onchange_code % index)) if len(onchange_code) > 0 else ""
-    return (
-        '<label class="task-list-control">' +
-        '<input type="checkbox"%s%s/>' % (onchange,
-            ' checked' if state.lower() == 'x' else '') +
-        '<span class="task-list-indicator"></span></label> '
+    onchange = (
+        (' onchange="%s"' % (onchange_code % index)) if len(onchange_code) > 0 else ""
     )
-    
+    return (
+        '<label class="task-list-control">'
+        + '<input type="checkbox"%s%s/>'
+        % (onchange, " checked" if state.lower() == "x" else "")
+        + '<span class="task-list-indicator"></span></label> '
+    )
+
+
 class TasklistTreeprocessor(Treeprocessor):
     """Tasklist tree processor that finds lists with checkboxes."""
 
@@ -63,8 +69,8 @@ class TasklistTreeprocessor(Treeprocessor):
         m = RE_CHECKBOX.match(li.text)
         if m is not None:
             li.text = self.md.htmlStash.store(
-                get_checkbox(m.group('state'), self.count, self.onchange_code)
-            ) + m.group('line')
+                get_checkbox(m.group("state"), self.count, self.onchange_code)
+            ) + m.group("line")
             self.count += 1
             found = True
         return found
@@ -78,8 +84,8 @@ class TasklistTreeprocessor(Treeprocessor):
                 m = RE_CHECKBOX.match(first.text)
                 if m is not None:
                     first.text = self.md.htmlStash.store(
-                        get_checkbox(m.group('state'), self.count, self.onchange_code)
-                    ) + m.group('line')
+                        get_checkbox(m.group("state"), self.count, self.onchange_code)
+                    ) + m.group("line")
                     self.count += 1
                     found = True
         return found
@@ -90,7 +96,7 @@ class TasklistTreeprocessor(Treeprocessor):
         self.onchange_code = self.config["onchange_code"]
         parent_map = dict((c, p) for p in root.iter() for c in p)
         task_items = []
-        lilinks = root.iter('li')
+        lilinks = root.iter("li")
         for li in lilinks:
             if li.text is None or li.text == "":
                 if not self.sub_paragraph(li):
@@ -102,7 +108,7 @@ class TasklistTreeprocessor(Treeprocessor):
             c = li.attrib.get("class", "")
             classes = [] if c == "" else c.split()
             classes.append("task-list-item")
-            li.attrib["class"] = ' '.join(classes)
+            li.attrib["class"] = " ".join(classes)
             task_items.append(li)
 
         for li in task_items:
@@ -111,7 +117,7 @@ class TasklistTreeprocessor(Treeprocessor):
             classes = [] if c == "" else c.split()
             if "task-list" not in classes:
                 classes.append("task-list")
-            parent.attrib["class"] = ' '.join(classes)
+            parent.attrib["class"] = " ".join(classes)
         return root
 
 
@@ -122,9 +128,9 @@ class OnChangeTlExtension(Extension):
         """Initialize."""
 
         self.config = {
-            'onchange_code': [
+            "onchange_code": [
                 "",
-                "Contents of the onchange tag for input, %d will be exchanged with index of checkbox"
+                "Contents of the onchange tag for input, %d will be exchanged with index of checkbox",
             ]
         }
 

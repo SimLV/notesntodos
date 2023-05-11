@@ -15,6 +15,7 @@ import sys
 
 import notesntodos.server
 
+
 def makeVarsJs(path, books, booknames, base_url):
     links = []
 
@@ -26,10 +27,11 @@ def makeVarsJs(path, books, booknames, base_url):
 
     print("Writing: " + path)
     with open(path, "w") as file:
-        file.write("var HEADER_LINKS=%s;\n" % json.dumps(links, separators=(',', ':')))
+        file.write("var HEADER_LINKS=%s;\n" % json.dumps(links, separators=(",", ":")))
+
 
 # Starting from cmd-line, get config from argv:
-base_url = "/notes/" 
+base_url = "/notes/"
 web_path = sys.argv[1]
 scenario = sys.argv[2]
 host_port = ":8081"
@@ -63,13 +65,15 @@ for book in books.split(","):
 # Set up the header links
 makeVarsJs(web_path + "/vars.js", books, booknames, base_url)
 
+
 def startServer():
     notesntodos.server.start(web_path, host_port, notes_root, base_url, books)
 
+
 if playground:
     from playground import runPlayground
+
     # Use just 2 minutes clean up cycle time, for testing
     runPlayground(book_folders, startServer, 2)
 else:
     startServer()
-

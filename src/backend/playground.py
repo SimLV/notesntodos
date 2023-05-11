@@ -15,15 +15,17 @@ from datetime import datetime
 
 exit = Event()
 
+
 def handleStopSig(signal_no, frame):
-    sig = {1:"SIGHUP", 2:"SIGINT", 15:"SIGTERM"}.get(signal_no, "?")
+    sig = {1: "SIGHUP", 2: "SIGINT", 15: "SIGTERM"}.get(signal_no, "?")
     print(sig + " detected, stopping playground")
     exit.set()
 
+
 def resetNotesFolder(folder, cycle_time_minutes):
     print("Cleaning up: " + folder)
-    
-    files = glob.glob(folder + '/*')
+
+    files = glob.glob(folder + "/*")
     for f in files:
         os.remove(f)
 
@@ -32,14 +34,15 @@ def resetNotesFolder(folder, cycle_time_minutes):
         with open(folder + "/" + filename, "w") as f:
             f.write(text)
 
-    writeFile(datetime.now().strftime('%Y-%m-%d') + " Welcome note.md", 
-                welcomeNote % cycle_time_minutes)
+    writeFile(
+        datetime.now().strftime("%Y-%m-%d") + " Welcome note.md",
+        welcomeNote % cycle_time_minutes,
+    )
 
-    writeFile("2021-03-11 A note about a project.md", 
-                projectNote)
+    writeFile("2021-03-11 A note about a project.md", projectNote)
 
-    writeFile("2015-10-20 Lorem Markdownum.md", 
-                loremMarkdownum)
+    writeFile("2015-10-20 Lorem Markdownum.md", loremMarkdownum)
+
 
 def runPlayground(folders, start_server_func, cycle_time_minutes):
     # Note, folders should not end with /

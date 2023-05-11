@@ -25,22 +25,25 @@ import threading
 import queue
 import time
 
+
 class DirWatcher:
     def __init__(self, path, report_wait_s, callback):
-        self._inotify = inotify.adapters.Inotify(block_duration_s = 1.0)
+        self._inotify = inotify.adapters.Inotify(block_duration_s=1.0)
 
         # Only care about events that change files:
-        self._inotify.add_watch(path, mask=
-            inotify.constants.IN_CLOSE_WRITE |
-            inotify.constants.IN_MOVED_FROM |
-            inotify.constants.IN_MOVED_TO |
-            inotify.constants.IN_DELETE |
-            inotify.constants.IN_DELETE_SELF)
+        self._inotify.add_watch(
+            path,
+            mask=inotify.constants.IN_CLOSE_WRITE
+            | inotify.constants.IN_MOVED_FROM
+            | inotify.constants.IN_MOVED_TO
+            | inotify.constants.IN_DELETE
+            | inotify.constants.IN_DELETE_SELF,
+        )
 
         self._reportWait = report_wait_s
         self._path = path
         self._callback = callback
-        
+
         self._stopEvent = threading.Event()
         self._ignoreQueue = queue.Queue()
 
@@ -58,21 +61,24 @@ class DirWatcher:
 
     def addIgnore(self, filename, timeout_s):
         self._ignoreQueue.put((filename, time.monotonic() + timeout_s))
-    
-    # Task Thread 
+
+    # Task Thread
     # ===========
 
     # --- Ignore management
 
     def _ignoresInit(self):
-        self._ignores = {} # Map from filename to timeout_seconds
+        self._ignores = {}  # Map from filename to timeout_seconds
 
     def _ignoresAdd(self, filename, timeout):
         self._ignores[filename] = timeout
 
     def _ignoresRemoveTimedOut(self, time_now):
-        self._ignores = { filename:timeout for (filename,timeout) in self._ignores.items() 
-                                             if time_now < timeout }
+        self._ignores = {
+            filename: timeout
+            for (filename, timeout) in self._ignores.items()
+            if time_now < timeout
+        }
 
     def _ignoresCheck(self, filename):
         return filename in self._ignores
@@ -90,8 +96,10 @@ class DirWatcher:
 
     def _operationsGet(self, time_threshold):
         ret = []
-        if (not self._operationTime is None and
-                 (time_threshold - self._operationTime) > 0):
+        if (
+            not self._operationTime is None
+            and (time_threshold - self._operationTime) > 0
+        ):
             for op_file in self._operations:
                 ret.append(tuple(op_file.split(",", 1)))
             self._operations.clear()
@@ -119,7 +127,7 @@ class DirWatcher:
                 while not self._ignoreQueue.empty():
                     (filename, timeout) = self._ignoreQueue.get()
                     self._ignoresAdd(filename, timeout)
-                
+
                 self._ignoresRemoveTimedOut(time_now)
 
                 # Look at event
@@ -137,10 +145,13 @@ class DirWatcher:
 
         print("DirWatcher thread for: %s stops" % self._path)
 
+
 # ----
+
 
 def testsRun():
     _testIgnoreTiming()
+
 
 def _testIgnoreTiming():
     import copy
@@ -163,7 +174,7 @@ def _testIgnoreTiming():
 
     os.system("mkdir -p /tmp/dw_test")
 
-    dw = DirWatcher('/tmp/dw_test', 3, testCallback)
+    dw = DirWatcher("/tmp/dw_test", 3, testCallback)
     time.sleep(0.5)
     os.system("touch /tmp/dw_test/ignore.not")
     dw.addIgnore("ignore.2", 2)
@@ -178,7 +189,7 @@ def _testIgnoreTiming():
     # Now expect the ignore.not to be reported in callback
     time.sleep(2)
     assert_eq(callback_count, 1)
-    assert_eq(callback_ops, [('IN_CLOSE_WRITE', 'ignore.not')])
+    assert_eq(callback_ops, [("IN_CLOSE_WRITE", "ignore.not")])
 
     # Now ignore.2 should be reported
     os.system("touch /tmp/dw_test/ignore.2")
@@ -187,7 +198,7 @@ def _testIgnoreTiming():
     assert_eq(callback_count, 1)
     time.sleep(2)
     assert_eq(callback_count, 2)
-    assert_eq(callback_ops, [('IN_CLOSE_WRITE', 'ignore.2')])
+    assert_eq(callback_ops, [("IN_CLOSE_WRITE", "ignore.2")])
 
     # Now ignore.2 and ignore.5 should be reported
     os.system("touch /tmp/dw_test/ignore.2")
@@ -196,10 +207,16 @@ def _testIgnoreTiming():
     assert_eq(callback_count, 3)
 
     try:
-        assert_eq(callback_ops, [('IN_CLOSE_WRITE', 'ignore.2'), ('IN_CLOSE_WRITE', 'ignore.5')])
+        assert_eq(
+            callback_ops,
+            [("IN_CLOSE_WRITE", "ignore.2"), ("IN_CLOSE_WRITE", "ignore.5")],
+        )
     except AssertionError:
         # The files might have come in in opposite order, which is OK:
-        assert_eq(callback_ops, [('IN_CLOSE_WRITE', 'ignore.5'), ('IN_CLOSE_WRITE', 'ignore.2')])
+        assert_eq(
+            callback_ops,
+            [("IN_CLOSE_WRITE", "ignore.5"), ("IN_CLOSE_WRITE", "ignore.2")],
+        )
 
     # Check stopping works
     assert_eq(dw.isRunning(), True)
@@ -210,4 +227,3 @@ def _testIgnoreTiming():
     # Clean up
     os.system("rm /tmp/dw_test/ignore*")
     os.system("rmdir /tmp/dw_test")
-
