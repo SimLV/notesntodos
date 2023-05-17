@@ -24,6 +24,8 @@ Copyright (c) 2021 - Lars Ole Pontoppidan <contact@larsee.com>
 
 import threading
 from bottle import Bottle, request, response, redirect, static_file
+import gunicorn.app.base
+
 from .notes import Note, NoteCollection
 from .dirwatcher import DirWatcher
 
@@ -147,11 +149,6 @@ def setupDirWatcher(notes_path, note_col, note_col_lock):
     return dw
 
 
-# --- Custom Gunicorn app ---
-
-import gunicorn.app.base
-
-
 class CustomUnicornApp(gunicorn.app.base.BaseApplication):
     """
     This gunicorn app class provides create and exit callbacks for worker exit
@@ -249,46 +246,3 @@ def start(frontend_path, host_port, notes_root, base_prefix="/", books=""):
             dw.join()
 
     CustomUnicornApp(createApp, exitApp, host_port).run()
-
-
-def _testCustomUnicornApp():
-    import time
-    import multiprocessing
-
-    def testProcess():
-        global context
-        context = {}
-
-        def create():
-            global context
-            context["create_called"] = True
-            my_app = Bottle()
-            my_app.specialValue = 123
-            return my_app
-
-        def exit(my_app):
-            global context
-            assert my_app.specialValue == 123
-            context["exit_called"] = True
-
-        CustomUnicornApp(create, exit, ":8765").run()
-
-        assert context["create_called"]
-        assert context["exit_called"]
-
-    process = multiprocessing.Process(target=testProcess)
-    process.start()
-
-    # Kill the test process after a few seconds
-    time.sleep(2)
-    process.terminate()
-    process.join()
-
-    # Assert errors in the sub process will not abort parent process,
-    # user must check output to make sure test passed
-
-    print("Test passed if gunicorn started and shut down without errors")
-
-
-def testsRun():
-    _testCustomUnicornApp()

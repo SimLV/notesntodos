@@ -21,9 +21,9 @@ Copyright 2021 - Lars Ole Pontoppidan <contact@larsee.com>
 
 import inotify.adapters
 import inotify.constants
+import time
 import threading
 import queue
-import time
 
 
 class DirWatcher:
@@ -144,86 +144,3 @@ class DirWatcher:
                 break
 
         print("DirWatcher thread for: %s stops" % self._path)
-
-
-# ----
-
-
-def testsRun():
-    _testIgnoreTiming()
-
-
-def _testIgnoreTiming():
-    import copy
-    import os
-
-    global callback_ops
-    global callback_count
-    callback_ops = []
-    callback_count = 0
-
-    def assert_eq(a, b):
-        if a != b:
-            raise AssertionError(str(a) + " != " + str(b))
-
-    def testCallback(ops):
-        global callback_ops
-        global callback_count
-        callback_count += 1
-        callback_ops = copy.copy(ops)
-
-    os.system("mkdir -p /tmp/dw_test")
-
-    dw = DirWatcher("/tmp/dw_test", 3, testCallback)
-    time.sleep(0.5)
-    os.system("touch /tmp/dw_test/ignore.not")
-    dw.addIgnore("ignore.2", 2)
-    os.system("touch /tmp/dw_test/ignore.2")
-    dw.addIgnore("ignore.5", 5)
-    os.system("touch /tmp/dw_test/ignore.5")
-
-    # Expect no callback after 2 secs, at least 3 seconds must pass
-    time.sleep(2)
-    assert_eq(callback_count, 0)
-
-    # Now expect the ignore.not to be reported in callback
-    time.sleep(2)
-    assert_eq(callback_count, 1)
-    assert_eq(callback_ops, [("IN_CLOSE_WRITE", "ignore.not")])
-
-    # Now ignore.2 should be reported
-    os.system("touch /tmp/dw_test/ignore.2")
-    os.system("touch /tmp/dw_test/ignore.5")
-    time.sleep(2)
-    assert_eq(callback_count, 1)
-    time.sleep(2)
-    assert_eq(callback_count, 2)
-    assert_eq(callback_ops, [("IN_CLOSE_WRITE", "ignore.2")])
-
-    # Now ignore.2 and ignore.5 should be reported
-    os.system("touch /tmp/dw_test/ignore.2")
-    os.system("touch /tmp/dw_test/ignore.5")
-    time.sleep(4)
-    assert_eq(callback_count, 3)
-
-    try:
-        assert_eq(
-            callback_ops,
-            [("IN_CLOSE_WRITE", "ignore.2"), ("IN_CLOSE_WRITE", "ignore.5")],
-        )
-    except AssertionError:
-        # The files might have come in in opposite order, which is OK:
-        assert_eq(
-            callback_ops,
-            [("IN_CLOSE_WRITE", "ignore.5"), ("IN_CLOSE_WRITE", "ignore.2")],
-        )
-
-    # Check stopping works
-    assert_eq(dw.isRunning(), True)
-    dw.stop()
-    dw.join()
-    assert_eq(dw.isRunning(), False)
-
-    # Clean up
-    os.system("rm /tmp/dw_test/ignore*")
-    os.system("rmdir /tmp/dw_test")

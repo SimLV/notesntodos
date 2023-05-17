@@ -125,12 +125,9 @@ def makeHtml(src):
     return makeLinksNoReferrer(html)
 
 
-# ------
-
-
-MdCheckCandidateRe = re.compile("\[[ xX]\] ")
+MdCheckCandidateRe = re.compile(r"\[[ xX]\] ")
 HtmlCheckTokenRe = re.compile(
-    re.escape('<span class="task-list-indicator"></span></label> ') + "¤(\d\d\d)д¤"
+    re.escape('<span class="task-list-indicator"></span></label> ') + r"¤(\d\d\d)д¤"
 )
 
 
@@ -181,9 +178,9 @@ FindTagsRe = re.compile("^tags:(.*)$", flags=re.MULTILINE)
 # from the parameter to the javascript function. Second group is the task text, until end
 # paragraph or end list tag.
 FindUncheckedHtmlRe = re.compile(
-    ",(\d+)"
+    r",(\d+)"
     + re.escape(')"/><span class="task-list-indicator"></span></label>')
-    + "(.*?)\</(p\>|li\>)"
+    + r"(.*?)\</(p\>|li\>)"
 )
 
 
@@ -427,48 +424,3 @@ class NoteCollection:
 
 
 # ---- Tests
-
-
-def testFindCheckOffsets():
-    src = "- [ ] This is some text\n   - [x] some more text [ ] a false check\n* - [X] and a final check\n- [x ] this is not a check"
-    offsets = findCheckOffsets(src)
-    assert len(offsets) == 3
-    assert src[offsets[0]] == " "
-    assert src[offsets[1]] == "x"
-    assert src[offsets[2]] == "X"
-
-
-def testFindUncheckedHtmlRe():
-    src = "- [ ] This is some text\n   - [x] some more text [ ] a false check\n* - [ ] check with www.link.test\n- [x ] this is not a check"
-    html = makeHtml(src)
-    matches = [x for x in FindUncheckedHtmlRe.finditer(html)]
-    assert len(matches) == 2
-    assert matches[0].group(1) == "0"
-    assert matches[0].group(2).strip() == "This is some text"
-    assert matches[1].group(1) == "2"
-    assert matches[1].group(2).strip().startswith("check with <a href")
-    assert matches[1].group(2).strip().endswith("</a>")
-
-
-def testFindUncheckedHtmlRe2():
-    src = """- [ ] Check1
-- [ ] Check2
-- [ ] Check3
-
-- [ ] Check4"""
-    html = makeHtml(src)
-    matches = [x for x in FindUncheckedHtmlRe.finditer(html)]
-    assert len(matches) == 4
-
-
-def testMakeNoreferrerLinks():
-    src = "Some random www.link.test\n"
-    html = makeHtml(src)
-    assert ' <a href="http://www.link.test" rel="noreferrer">www.link.test</a>' in html
-
-
-def testsRun():
-    testFindCheckOffsets()
-    testFindUncheckedHtmlRe()
-    testFindUncheckedHtmlRe2()
-    testMakeNoreferrerLinks()
