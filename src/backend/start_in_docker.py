@@ -35,7 +35,7 @@ def makeVarsJs(path, books, booknames, base_url):
 base_url = os.environ.get("BASE_URL", "/")
 web_path = "./web"
 host_port = ":5000"
-notes_root = "/notes"
+notes_root = os.environ.get("NOTES_ROOT", "/notes")
 books = os.environ.get("NOTEBOOKS", "")
 booknames = os.environ.get("NOTEBOOK_NAMES", "")
 try:
